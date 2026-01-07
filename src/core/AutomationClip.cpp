@@ -29,6 +29,7 @@
 #include "AutomationNode.h"
 #include "AutomationClipView.h"
 #include "AutomationTrack.h"
+#include "InstrumentTrack.h"
 #include "KeyboardShortcuts.h"
 #include "LocaleHelper.h"
 #include "Note.h"
@@ -875,7 +876,19 @@ void AutomationClip::loadSettings( const QDomElement & _this )
 		}
 		else if( element.tagName() == "object" )
 		{
-			m_idsToResolve.push_back(element.attribute("id").toInt());
+			// Support new trackref/param format for external automation creation
+			if (element.hasAttribute("trackref") && element.hasAttribute("param"))
+			{
+				TrackParamRef ref;
+				ref.trackIndex = element.attribute("trackref").toInt();
+				ref.paramName = element.attribute("param");
+				m_trackRefsToResolve.push_back(ref);
+			}
+			// Fall back to legacy id-based format
+			else if (element.hasAttribute("id"))
+			{
+				m_idsToResolve.push_back(element.attribute("id").toInt());
+			}
 		}
 	}
 	
@@ -1065,6 +1078,41 @@ void AutomationClip::resolveAllIDs()
 						}
 					}
 					a->m_idsToResolve.clear();
+
+					// Resolve track/parameter references (new external automation format)
+					for (const auto& ref : a->m_trackRefsToResolve)
+					{
+						// Find the track by index in the combined list
+						if (ref.trackIndex >= 0 && ref.trackIndex < static_cast<int>(l.size()))
+						{
+							Track* targetTrack = l[ref.trackIndex];
+							AutomatableModel* model = nullptr;
+
+							// Get the model based on parameter name
+							// Currently supports InstrumentTrack parameters
+							if (targetTrack->type() == Track::Type::Instrument)
+							{
+								auto instTrack = dynamic_cast<InstrumentTrack*>(targetTrack);
+								if (instTrack)
+								{
+									if (ref.paramName == "pitch")
+										model = instTrack->pitchModel();
+									else if (ref.paramName == "vol" || ref.paramName == "volume")
+										model = instTrack->volumeModel();
+									else if (ref.paramName == "pan" || ref.paramName == "panning")
+										model = instTrack->panningModel();
+								}
+							}
+							// TODO: Add support for other track types (SampleTrack, BBTrack, etc.)
+
+							if (model)
+							{
+								a->addObject(model, false);
+							}
+						}
+					}
+					a->m_trackRefsToResolve.clear();
+
 					a->dataChanged();
 				}
 			}

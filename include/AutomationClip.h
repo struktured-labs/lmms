@@ -230,6 +230,14 @@ private:
 
 	AutomationTrack * m_autoTrack;
 	std::vector<jo_id_t> m_idsToResolve;
+
+	// For resolving track/parameter references (e.g., trackref="5" param="pitch")
+	struct TrackParamRef {
+		int trackIndex;
+		QString paramName;
+	};
+	std::vector<TrackParamRef> m_trackRefsToResolve;
+
 	objectVector m_objects;
 	timeMap m_timeMap;	// actual values
 	timeMap m_oldTimeMap;	// old values for storing the values before setDragValue() is called.
