@@ -37,6 +37,8 @@
 #include "ProjectJournal.h"
 #include "Song.h"
 
+#include <QDebug>
+
 
 namespace lmms
 {
@@ -65,6 +67,8 @@ AutomationClip::AutomationClip( AutomationTrack * _auto_track ) :
 AutomationClip::AutomationClip( const AutomationClip & _clip_to_copy ) :
 	Clip(_clip_to_copy),
 	m_autoTrack( _clip_to_copy.m_autoTrack ),
+	m_idsToResolve( _clip_to_copy.m_idsToResolve ),
+	m_trackRefsToResolve( _clip_to_copy.m_trackRefsToResolve ),
 	m_objects( _clip_to_copy.m_objects ),
 	m_tension( _clip_to_copy.m_tension ),
 	m_progressionType(_clip_to_copy.m_progressionType),
@@ -1049,6 +1053,7 @@ void AutomationClip::resolveAllIDs()
 				auto a = dynamic_cast<AutomationClip*>(clip);
 				if( a )
 				{
+
 					for (const auto& id : a->m_idsToResolve)
 					{
 						JournallingObject* o = Engine::projectJournal()->journallingObject(id);
@@ -1082,6 +1087,7 @@ void AutomationClip::resolveAllIDs()
 					// Resolve track/parameter references (new external automation format)
 					for (const auto& ref : a->m_trackRefsToResolve)
 					{
+
 						// Find the track by index in the combined list
 						if (ref.trackIndex >= 0 && ref.trackIndex < static_cast<int>(l.size()))
 						{
@@ -1101,6 +1107,9 @@ void AutomationClip::resolveAllIDs()
 										model = instTrack->volumeModel();
 									else if (ref.paramName == "pan" || ref.paramName == "panning")
 										model = instTrack->panningModel();
+
+									if (model)
+									else
 								}
 							}
 							// TODO: Add support for other track types (SampleTrack, BBTrack, etc.)
@@ -1109,6 +1118,9 @@ void AutomationClip::resolveAllIDs()
 							{
 								a->addObject(model, false);
 							}
+						}
+						else
+						{
 						}
 					}
 					a->m_trackRefsToResolve.clear();
