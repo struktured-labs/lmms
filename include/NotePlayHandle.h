@@ -330,6 +330,7 @@ private:
 	Origin m_origin;
 
 	bool m_frequencyNeedsUpdate;				// used to update pitch
+	float m_instrumentPitch;					// cached instrument pitch for external automation
 } ;
 
 

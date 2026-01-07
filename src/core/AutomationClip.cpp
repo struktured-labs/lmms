@@ -1101,6 +1101,8 @@ void AutomationClip::resolveAllIDs()
 								auto instTrack = dynamic_cast<InstrumentTrack*>(targetTrack);
 								if (instTrack)
 								{
+									qDebug() << "Resolving automation for InstrumentTrack:" << instTrack->name() << "param:" << ref.paramName;
+
 									if (ref.paramName == "pitch")
 										model = instTrack->pitchModel();
 									else if (ref.paramName == "vol" || ref.paramName == "volume")
@@ -1109,18 +1111,30 @@ void AutomationClip::resolveAllIDs()
 										model = instTrack->panningModel();
 
 									if (model)
+									{
+										qDebug() << "  -> Found model, adding to automation clip";
+									}
 									else
+									{
+										qDebug() << "  -> WARNING: Model is null for param:" << ref.paramName;
+									}
 								}
 							}
 							// TODO: Add support for other track types (SampleTrack, BBTrack, etc.)
 
 							if (model)
 							{
+								qDebug() << "Adding model to automation clip";
 								a->addObject(model, false);
+							}
+							else
+							{
+								qDebug() << "ERROR: Failed to resolve trackref=" << ref.trackIndex << " param=" << ref.paramName;
 							}
 						}
 						else
 						{
+							qDebug() << "ERROR: trackref" << ref.trackIndex << "out of range (list size:" << l.size() << ")";
 						}
 					}
 					a->m_trackRefsToResolve.clear();
