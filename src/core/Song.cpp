@@ -378,13 +378,25 @@ void Song::processAutomations(const TrackList &tracklist, TimePos timeStart, fpp
 	values = container->automatedValuesAt(timeStart, clipNum);
 	const TrackList& tracks = container->tracks();
 
+	// Debug: Show value map size
+	if (values.size() > 0)
+	{
+		qDebug() << "processAutomations at" << timeStart << ": found" << values.size() << "automated values";
+		for (auto it = values.begin(); it != values.end(); it++)
+		{
+			qDebug() << "  Model:" << it.key() << "-> value:" << it.value();
+		}
+	}
+
 	Track::clipVector clips;
 	for (Track* track : tracks)
 	{
 		if (track->type() == Track::Type::Automation) {
+			qDebug() << "Found automation track:" << track->name();
 			track->getClipsInRange(clips, 0, timeStart);
 		}
 	}
+	qDebug() << "Total automation clips found:" << clips.size();
 
 	// Process recording
 	for (Clip* clip : clips)
@@ -433,7 +445,10 @@ void Song::processAutomations(const TrackList &tracklist, TimePos timeStart, fpp
 			 * Y axis can be set to logarithmic, and automation clips store
 			 * the actual values, and not the invertedScaledValue.
 			 */
-			model->setValue(model->scaledValue(it.value()), true);
+			float rawValue = it.value();
+			float scaledValue = model->scaledValue(rawValue);
+			qDebug() << "Calling setValue on model" << model << ": raw=" << rawValue << "scaled=" << scaledValue;
+			model->setValue(scaledValue, true);
 		}
 	}
 }

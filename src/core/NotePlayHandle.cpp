@@ -33,6 +33,8 @@
 #include "Song.h"
 #include "lmms_math.h"
 
+#include <QDebug>
+
 namespace lmms
 {
 
@@ -79,7 +81,8 @@ NotePlayHandle::NotePlayHandle( InstrumentTrack* instrumentTrack,
 	m_songGlobalParentOffset( 0 ),
 	m_midiChannel( midiEventChannel >= 0 ? midiEventChannel : instrumentTrack->midiPort()->realOutputChannel() ),
 	m_origin( origin ),
-	m_frequencyNeedsUpdate( false )
+	m_frequencyNeedsUpdate( false ),
+	m_instrumentPitch( instrumentTrack ? instrumentTrack->pitchModel()->value() : 0.0f )
 {
 	lock();
 	if( hasParent() == false )
@@ -234,10 +237,10 @@ void NotePlayHandle::play( SampleFrame* _working_buffer )
 			offset() );
 	}
 
-	if( m_frequencyNeedsUpdate )
-	{
-		updateFrequency();
-	}
+	// Update frequency every period to catch pitch changes from automation
+	// updateFrequency() reads the current pitch value from the model,
+	// so we don't need to cache or check for changes - just update every time
+	updateFrequency();
 
 	// number of frames that can be played this period
 	f_cnt_t framesThisPeriod = m_totalFramesPlayed == 0

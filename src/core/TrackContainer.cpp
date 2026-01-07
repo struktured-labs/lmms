@@ -28,6 +28,7 @@
 #include <QProgressDialog>
 #include <QDomElement>
 #include <QWriteLocker>
+#include <QDebug>
 
 #include "AutomationClip.h"
 #include "embed.h"
@@ -268,6 +269,8 @@ AutomatedValueMap TrackContainer::automatedValuesFromTracks(const TrackList &tra
 {
 	Track::clipVector clips;
 
+	qDebug() << "automatedValuesFromTracks: checking" << tracks.size() << "tracks at time" << time;
+
 	for (Track* track: tracks)
 	{
 		if (track->isMuted()) {
@@ -277,10 +280,25 @@ AutomatedValueMap TrackContainer::automatedValuesFromTracks(const TrackList &tra
 		switch(track->type())
 		{
 		case Track::Type::Automation:
+			qDebug() << "  Found Automation track:" << track->name() << "with" << track->numOfClips() << "clips";
+			for (int i = 0; i < track->numOfClips(); i++)
+			{
+				Clip* c = track->getClip(i);
+				qDebug() << "    Clip" << i << ":" << c->name() << "at pos" << c->startPosition() << "len" << c->length();
+			}
 		case Track::Type::HiddenAutomation:
+			if (track->type() == Track::Type::HiddenAutomation)
+				qDebug() << "  Found HiddenAutomation track:" << track->name() << "with" << track->numOfClips() << "clips";
 		case Track::Type::Pattern:
 			if (clipNum < 0) {
+				int clipsBefore = clips.size();
+				qDebug() << "    Calling getClipsInRange(0," << time << ") on" << track->name();
 				track->getClipsInRange(clips, 0, time);
+				int clipsAfter = clips.size();
+				if (clipsAfter > clipsBefore)
+					qDebug() << "    Added" << (clipsAfter - clipsBefore) << "clips from track" << track->name();
+				else if (track->type() == Track::Type::Automation)
+					qDebug() << "    WARNING: No clips added from" << track->name() << "despite having" << track->numOfClips() << "clips!";
 			} else {
 				Q_ASSERT(track->numOfClips() > clipNum);
 				clips.push_back(track->getClip(clipNum));
@@ -294,6 +312,8 @@ AutomatedValueMap TrackContainer::automatedValuesFromTracks(const TrackList &tra
 
 	Q_ASSERT(std::is_sorted(clips.begin(), clips.end(), Clip::comparePosition));
 
+	qDebug() << "Processing" << clips.size() << "automation clips";
+
 	for(Clip* clip : clips)
 	{
 		if (clip->isMuted() || clip->startPosition() > time) {
@@ -302,7 +322,9 @@ AutomatedValueMap TrackContainer::automatedValuesFromTracks(const TrackList &tra
 
 		if (auto* p = dynamic_cast<AutomationClip *>(clip))
 		{
+			qDebug() << "  AutomationClip:" << p->name() << "at pos" << p->startPosition() << "len" << p->length();
 			if (! p->hasAutomation()) {
+				qDebug() << "    WARNING: Clip has no automation data!";
 				continue;
 			}
 			TimePos relTime = time - p->startPosition() - p->startTimeOffset();
@@ -310,9 +332,11 @@ AutomatedValueMap TrackContainer::automatedValuesFromTracks(const TrackList &tra
 				relTime = std::min(static_cast<int>(relTime), p->length() - p->startTimeOffset());
 			}
 			float value = p->valueAt(relTime);
+			qDebug() << "    relTime:" << relTime << "value:" << value << "objects:" << p->objects().size();
 
 			for (AutomatableModel* model : p->objects())
 			{
+				qDebug() << "      Setting model" << model << "to value" << value;
 				valueMap[model] = value;
 			}
 		}
